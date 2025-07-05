@@ -24,3 +24,7 @@ Route::get('/check-visitor-status', [VisitorController::class, 'checkVisitorStat
 Route::get('/get_all_visitors', [VisitorController::class, 'getAllVisitors']);
 Route::post('/save_intime/{id}', [VisitorController::class, 'saveInTime']);
 Route::post('/save_outtime/{id}', [VisitorController::class, 'saveOutTime']);
+
+Route::post('/generate_token_url', [VisitorController::class, 'generateTokenAndUrl']);
+Route::get('/verify_token', [VisitorController::class, 'verifyToken']);
+Route::post('/invalidate_token', [VisitorController::class, 'invalidateToken']);

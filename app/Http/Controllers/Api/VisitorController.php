@@ -8,10 +8,62 @@ use App\Models\Visitor;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Str;
+use Illuminate\Support\Carbon;
 
 
 class VisitorController extends Controller
 {
+
+    // public function store(Request $request)
+    // {
+    //     $academicyeardata = DB::table('academic_yr')->where('active', 'Y')->first();
+    //     $academic_yr = $academicyeardata->academic_yr ?? null;
+
+    //     $validated = $request->validate([
+    //         'name' => 'required|string|max:255',
+    //         'mobileno' => 'required|digits:10',
+    //         'email' => 'required|string|max:50',
+    //         'address' => 'required|string|max:1000',
+    //         'purpose' => 'required|string|max:255',
+    //         'whomtomeet' => 'required|string|max:255',
+    //         'token' => 'required|string',
+    //         'token_created_at' => 'required|date',
+    //     ]);
+
+    //     // Add system-generated values
+    //     $validated['academic_yr'] = $academic_yr;
+    //     $validated['visit_date'] = date('Y-m-d');
+    //     $validated['visit_in_time'] = date('H:i:s');
+    //     $validated['visit_out_time'] = null; // Initially null
+
+    //     // Token already used
+    //     if (Visitor::where('token', $validated['token'])->exists()) {
+    //         return response()->json([
+    //             'status' => 'error',
+    //             'message' => 'This token has already been used.',
+    //         ], 403);
+    //     }
+
+    //     // Token expired
+    //     $createdAt = strtotime($validated['token_created_at']);
+    //     if ((time() - $createdAt) > 60) {
+    //         return response()->json([
+    //             'status' => 'error',
+    //             'message' => 'Token expired. Please scan the QR code again.',
+    //         ], 403);
+    //     }
+
+    //     // Save visitor
+    //     $visitor = new Visitor($validated);
+    //     $visitor->save();
+
+    //     return response()->json([
+    //         'status' => 'success',
+    //         'message' => 'Visitor data saved successfully.',
+    //         'data' => $visitor
+    //     ], 201);
+    // }
 
     public function store(Request $request)
     {
@@ -33,8 +85,8 @@ class VisitorController extends Controller
         $validated['academic_yr'] = $academic_yr;
         $validated['visit_date'] = date('Y-m-d');
         $validated['visit_in_time'] = date('H:i:s');
-        $validated['visit_out_time'] = null; // Initially null
-
+        $validated['visit_out_time'] = null; //null
+        $validated['short_name'] = $request->short_name;
         // Token already used
         if (Visitor::where('token', $validated['token'])->exists()) {
             return response()->json([
@@ -56,16 +108,21 @@ class VisitorController extends Controller
         $visitor = new Visitor($validated);
         $visitor->save();
 
+        // Invalidate the token after successful save
+        DB::table('token')
+            ->where('token', $validated['token'])
+            ->update(['token' => null]);
+
         return response()->json([
             'status' => 'success',
-            'message' => 'Visitor data saved successfully.',
+            'message' => 'Visitor data saved successfully. Token invalidated.',
             'data' => $visitor
         ], 201);
     }
 
 
-    // Recaptch
 
+    // Recaptch
     // public function store(Request $request)
     // {
     //     //  Verify reCAPTCHA
@@ -137,6 +194,7 @@ class VisitorController extends Controller
     {
         $visitor = Visitor::find($id);
 
+
         if (!$visitor) {
             return response()->json([
                 'status' => 'error',
@@ -149,7 +207,6 @@ class VisitorController extends Controller
             'data' => $visitor
         ]);
     }
-
 
     public function findByMobile($mobileno)
     {
@@ -167,7 +224,6 @@ class VisitorController extends Controller
             'data' => $visitor
         ]);
     }
-
 
     public function role(Request $request)
     {
@@ -222,6 +278,25 @@ class VisitorController extends Controller
         ]);
     }
 
+    // public function checkVisitorStatus(Request $request)
+    // {
+    //     $email = $request->email;
+    //     $mobileno = $request->mobileno;
+
+    //     $visitor = Visitor::where(function ($q) use ($email, $mobileno) {
+    //         $q->where('email', $email)->orWhere('mobileno', $mobileno);
+    //     })
+    //         ->whereNull('visit_out_time')
+    //         ->latest()
+    //         ->first();
+
+    //     if ($visitor) {
+    //         return response()->json(['alreadyInside' => true]);
+    //     }
+
+    //     return response()->json(['alreadyInside' => false]);
+    // }
+
     public function checkVisitorStatus(Request $request)
     {
         $email = $request->email;
@@ -235,15 +310,22 @@ class VisitorController extends Controller
             ->first();
 
         if ($visitor) {
+            // Invalidate the token in the token table
+            DB::table('token')
+                ->where('token', $visitor->token)
+                ->update(['token' => null]);
+
             return response()->json(['alreadyInside' => true]);
         }
 
         return response()->json(['alreadyInside' => false]);
     }
 
+
     public function getAllVisitors(Request $request)
     {
-        $visitors = DB::table('get_visitors')->get();
+        $short_name = $request->input('short_name');
+        $visitors = DB::table('get_visitors')->where('short_name', $short_name)->get();
         return response()->json(['data' => $visitors]);
     }
 
@@ -252,9 +334,11 @@ class VisitorController extends Controller
         $validated = $request->validate([
             'visit_in_time' => 'required|date_format:H:i:s',
         ]);
+        $validated['short_name'] = $request->short_name;
 
         $visitor = Visitor::find($id);
         $visitor->visit_in_time = $validated['visit_in_time'];
+        $visitor->short_name = $validated['short_name'];
         $visitor->save();
 
         return response()->json([
@@ -270,9 +354,11 @@ class VisitorController extends Controller
         $validated = $request->validate([
             'visit_out_time' => 'required|date_format:Y-m-d H:i:s'
         ]);
+        $validated['short_name'] = $request->short_name;
 
         $visitor = Visitor::find($id);
         $visitor->visit_out_time = $validated['visit_out_time'];
+        $visitor->short_name = $validated['short_name'];
 
         return response()->json([
             'status' => '200',
@@ -280,5 +366,133 @@ class VisitorController extends Controller
             'success' => true,
             'data' => $visitor,
         ]);
+    }
+
+    // genereate a QR code api with Url and token
+
+    // public function generateTokenAndUrl()
+    // {
+
+    //     $visitor = Visitor::latest()->first();
+
+    //     if (!$visitor) {
+    //         return response()->json([
+    //             'success' => false,
+    //             'message' => 'No visitors found'
+    //         ], 404);
+    //     }
+
+
+    //     $token = Str::random(32);
+
+
+    //     $visitor->update([
+    //         'token' => $token,
+    //         'token_created_at' => Carbon::now()
+    //     ]);
+
+
+    //     // $baseUrl = "https://yourdomain.com/visitor-form";
+    //     $baseUrl = "localhost:5173";
+
+
+    //     $urlWithToken = "{$baseUrl}?token={$token}";
+
+
+    //     return response()->json([
+    //         'success' => true,
+    //         'base_url' => $baseUrl,
+    //         'token' => $token,
+    //         'url_with_token' => $urlWithToken
+    //     ]);
+    // }
+
+    public function generateTokenAndUrl()
+    {
+        // Step 1: Get latest visitor (optional)
+        $visitor = Visitor::latest()->first();
+
+        if (!$visitor) {
+            return response()->json([
+                'success' => false,
+                'message' => 'No visitors found'
+            ], 404);
+        }
+
+        // Step 2: Generate new token
+        $token = Str::random(32);
+        $now = Carbon::now();
+
+        // Step 3: Truncate (clear) token table and insert new token
+        DB::table('token')->truncate();
+
+        DB::table('token')->insert([
+            'token' => $token
+        ]);
+
+
+        // Step 4: Optionally update visitor table with same token
+        $visitor->update([
+            'token' => $token,
+            'token_created_at' => $now
+        ]);
+
+        // Step 5: Create frontend URL with token
+        $baseUrl = "https://vms.evolvu/public/react";
+        $urlWithToken = "{$baseUrl}?token={$token}";
+
+        // Step 6: Return response
+        return response()->json([
+            'success' => true,
+            'base_url' => $baseUrl,
+            'token' => $token,
+            'url_with_token' => $urlWithToken
+        ]);
+    }
+
+    public function verifyToken(Request $request)
+    {
+        $passedToken = $request->query('token');
+
+        if (!$passedToken) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Token not provided'
+            ], 400);
+        }
+
+        $validToken = DB::table('token')->value('token');
+
+        if ($passedToken === $validToken) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Token is valid'
+            ]);
+        } else {
+            return response()->json([
+                'success' => false,
+                'message' => 'Token is invalid or expired'
+            ], 403);
+        }
+
+        $passedShortName = $request->query('short_name');
+
+        if (!$passedShortName) {
+            return response()->json([
+                'status' => 400,
+                'success' => false,
+                'message' => 'Short Name not Found',
+
+            ]);
+        }
+    }
+
+    public function invalidateToken(Request $request)
+    {
+        $token = $request->token;
+
+        DB::table('token')->where('token_id', '1')->update(['token' => null]);
+
+        return response()->json(['success' => true, 'message' => 'Token invalidated.']);
     }
 }
