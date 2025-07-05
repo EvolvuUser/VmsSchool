@@ -329,6 +329,26 @@ class VisitorController extends Controller
         return response()->json(['data' => $visitors]);
     }
 
+    public function getAllVisitor(Request $request)
+    {
+        // Validate input
+        $request->validate([
+            'short_name' => 'required|string',
+        ]);
+
+        // Fetch visitors from database
+        $short_name = $request->input('short_name');
+
+        $visitors = DB::table('get_visitors')
+            ->where('short_name', $short_name)
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'data' => $visitors,
+        ]);
+    }
+
     public function saveInTime(Request $request, $id)
     {
         $validated = $request->validate([

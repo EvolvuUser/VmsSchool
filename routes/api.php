@@ -22,6 +22,7 @@ Route::post('/get_emailotp', [VisitorController::class, 'getEmailOtp']);
 Route::post('/verifyemailotp', [VisitorController::class, 'Verifyemailotp']);
 Route::get('/check-visitor-status', [VisitorController::class, 'checkVisitorStatus']);
 Route::get('/get_all_visitors', [VisitorController::class, 'getAllVisitors']);
+Route::post('/get_all_visitor', [VisitorController::class, 'getAllVisitor']);
 Route::post('/save_intime/{id}', [VisitorController::class, 'saveInTime']);
 Route::post('/save_outtime/{id}', [VisitorController::class, 'saveOutTime']);
 
