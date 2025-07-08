@@ -158,7 +158,6 @@ class VisitorController extends Controller
         ]);
     }
 
-
     public function checkVisitorStatus(Request $request)
     {
         $email = $request->email;
@@ -182,7 +181,6 @@ class VisitorController extends Controller
 
         return response()->json(['alreadyInside' => false]);
     }
-
 
     public function getAllVisitors(Request $request)
     {
@@ -214,7 +212,7 @@ class VisitorController extends Controller
     public function saveInTime(Request $request, $id)
     {
         $validated = $request->validate([
-            'visit_in_time' => 'required|date_format:H:i:s',
+            'visit_in_time' => 'required|date_format:Y-m-d H:i:s',
         ]);
         $validated['short_name'] = $request->short_name;
 
@@ -233,6 +231,7 @@ class VisitorController extends Controller
 
     public function saveOutTime(Request $request, $id)
     {
+
         $validated = $request->validate([
             'visit_out_time' => 'required|date_format:Y-m-d H:i:s'
         ]);
@@ -241,6 +240,7 @@ class VisitorController extends Controller
         $visitor = Visitor::find($id);
         $visitor->visit_out_time = $validated['visit_out_time'];
         $visitor->short_name = $validated['short_name'];
+        $visitor->save();
 
         return response()->json([
             'status' => '200',
