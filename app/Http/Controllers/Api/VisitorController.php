@@ -12,14 +12,139 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Carbon;
 
 
+
 class VisitorController extends Controller
 {
+    //first
+    // public function store(Request $request)
+    // {
+    //     $academicyeardata = DB::table('academic_yr')->where('active', 'Y')->first();
+    //     $academic_yr = $academicyeardata->academic_yr ?? null;
+
+    //     $validated = $request->validate([
+    //         'name' => 'required|string|max:255',
+    //         'mobileno' => 'required|digits:10',
+    //         'email' => 'required|string|max:50',
+    //         'address' => 'required|string|max:1000',
+    //         'purpose' => 'required|string|max:255',
+    //         'whomtomeet' => 'required|string|max:255',
+    //         'token' => 'required|string',
+    //         'token_created_at' => 'required|date',
+    //     ]);
+
+    //     // Add system-generated values
+    //     $validated['academic_yr'] = $academic_yr;
+    //     $validated['visit_date'] = date('Y-m-d');
+    //     $validated['visit_in_time'] = now()->format('Y-m-d H:i:s');
+    //     $validated['visit_out_time'] = null; //null
+    //     $validated['short_name'] = $request->short_name;
+    //     // Token already used
+    //     if (Visitor::where('token', $validated['token'])->exists()) {
+    //         return response()->json([
+    //             'status' => 'error',
+    //             'message' => 'This token has already been used.',
+    //         ], 403);
+    //     }
+
+    //     // Token expired
+    //     $createdAt = strtotime($validated['token_created_at']);
+    //     if ((time() - $createdAt) > 60) {
+    //         return response()->json([
+    //             'status' => 'error',
+    //             'message' => 'Token expired. Please scan the QR code again.',
+    //         ], 403);
+    //     }
+
+    //     // Save visitor
+    //     $visitor = new Visitor($validated);
+    //     $visitor->save();
+
+    //     // Invalidate the token after successful save
+    //     DB::table('token')
+    //         ->where('token', $validated['token'])
+    //         ->update(['token' => null]);
+
+    //     return response()->json([
+    //         'status' => 'success',
+    //         'message' => 'Visitor data saved successfully. Token invalidated.',
+    //         'data' => $visitor
+    //     ], 201);
+    // }
+
+
+    //second some time is working
+    // public function store(Request $request)
+    // {
+    //     $academicyeardata = DB::table('academic_yr')->where('active', 'Y')->first();
+    //     $academic_yr = $academicyeardata->academic_yr ?? null;
+
+    //     // Validate input
+    //     $validated = $request->validate([
+    //         'name' => 'required|string|max:255',
+    //         'mobileno' => 'required|digits:10',
+    //         'email' => 'required|string|max:50',
+    //         'address' => 'required|string|max:1000',
+    //         'purpose' => 'required|string|max:255',
+    //         'whomtomeet' => 'required|string|max:255',
+    //         'token' => 'required|string',
+    //         'token_created_at' => 'required|date',
+    //     ]);
+
+    //     // Add generated fields
+    //     $validated['academic_yr'] = $academic_yr;
+    //     $validated['visit_date'] = now()->format('Y-m-d');
+    //     $validated['visit_in_time'] = now()->format('Y-m-d H:i:s');
+    //     $validated['visit_out_time'] = null;
+    //     $validated['short_name'] = $request->short_name;
+
+    //     // Check if token already used
+    //     if (Visitor::where('token', $validated['token'])->exists()) {
+    //         return response()->json([
+    //             'status' => 'error',
+    //             'message' => 'This token has already been used.',
+    //         ], 403);
+    //     }
+
+    //     // Check if token is expired (more than 60 seconds old)
+    //     try {
+    //         $createdAt = Carbon::parse($validated['token_created_at']);
+    //     } catch (\Exception $e) {
+    //         return response()->json([
+    //             'status' => 'error',
+    //             'message' => 'Invalid token timestamp.',
+    //         ], 400);
+    //     }
+
+    //     if (now()->diffInSeconds($createdAt) > 60) {
+    //         return response()->json([
+    //             'status' => 'error',
+    //             'message' => 'Token expired. Please scan the QR code again.',
+    //         ], 403);
+    //     }
+
+    //     // Save visitor
+    //     $visitor = new Visitor($validated);
+    //     $visitor->save();
+
+    //     // Invalidate token
+    //     DB::table('token')
+    //         ->where('token', $validated['token'])
+    //         ->update(['token' => null]);
+
+    //     return response()->json([
+    //         'status' => 'success',
+    //         'message' => 'Visitor data saved successfully. Token invalidated.',
+    //         'data' => $visitor
+    //     ], 201);
+    // }
+
 
     public function store(Request $request)
     {
         $academicyeardata = DB::table('academic_yr')->where('active', 'Y')->first();
         $academic_yr = $academicyeardata->academic_yr ?? null;
 
+        // Step 1: Validate input
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'mobileno' => 'required|digits:10',
@@ -31,13 +156,14 @@ class VisitorController extends Controller
             'token_created_at' => 'required|date',
         ]);
 
-        // Add system-generated values
+        // Step 2: Add additional fields
         $validated['academic_yr'] = $academic_yr;
-        $validated['visit_date'] = date('Y-m-d');
-        $validated['visit_in_time'] = date('H:i:s');
-        $validated['visit_out_time'] = null; //null
+        $validated['visit_date'] = now()->format('Y-m-d');
+        $validated['visit_in_time'] = now()->format('Y-m-d H:i:s');
+        $validated['visit_out_time'] = null;
         $validated['short_name'] = $request->short_name;
-        // Token already used
+
+        // Step 3: Check if token is already used
         if (Visitor::where('token', $validated['token'])->exists()) {
             return response()->json([
                 'status' => 'error',
@@ -45,30 +171,41 @@ class VisitorController extends Controller
             ], 403);
         }
 
-        // Token expired
-        $createdAt = strtotime($validated['token_created_at']);
-        if ((time() - $createdAt) > 60) {
+        // Step 4: Validate token expiration (UTC to match frontend)
+        try {
+            $createdAt = Carbon::parse($validated['token_created_at'])->timezone('UTC');
+            $now = now('UTC');
+
+            if ($now->diffInSeconds($createdAt) > 300) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => 'Token expired. Please scan the QR code again.',
+                ], 403);
+            }
+        } catch (\Exception $e) {
             return response()->json([
                 'status' => 'error',
-                'message' => 'Token expired. Please scan the QR code again.',
-            ], 403);
+                'message' => 'Invalid token timestamp.',
+            ], 400);
         }
 
-        // Save visitor
+        // Step 5: Save visitor
         $visitor = new Visitor($validated);
         $visitor->save();
 
-        // Invalidate the token after successful save
+        // Step 6: Invalidate token
         DB::table('token')
             ->where('token', $validated['token'])
             ->update(['token' => null]);
 
+        // Step 7: Return response
         return response()->json([
             'status' => 'success',
             'message' => 'Visitor data saved successfully. Token invalidated.',
             'data' => $visitor
         ], 201);
     }
+
 
     public function show($id)
     {
@@ -153,7 +290,7 @@ class VisitorController extends Controller
 
         return response()->json([
             'status' => '400',
-            'message' => 'Otp is incorrect.',
+            'message' => 'Otp is Incorrect.',
             'success' => false
         ]);
     }
@@ -252,18 +389,52 @@ class VisitorController extends Controller
 
     // genereate a QR code api with Url and token
 
+    // public function generateTokenAndUrl()
+    // {
+    //     // Step 1: Get latest visitor (optional)
+    //     $visitor = Visitor::latest()->first();
+
+    //     if (!$visitor) {
+    //         return response()->json([
+    //             'success' => false,
+    //             'message' => 'No visitors found'
+    //         ], 404);
+    //     }
+
+    //     // Step 2: Generate new token
+    //     $token = Str::random(32);
+    //     $now = Carbon::now();
+
+    //     // Step 3: Truncate (clear) token table and insert new token
+    //     DB::table('token')->truncate();
+
+    //     DB::table('token')->insert([
+    //         'token' => $token
+    //     ]);
+
+
+    //     // Step 4: Optionally update visitor table with same token
+    //     $visitor->update([
+    //         'token' => $token,
+    //         'token_created_at' => $now
+    //     ]);
+
+    //     // Step 5: Create frontend URL with token
+    //     // $baseUrl = "https://vms.evolvu.in/public/react";
+    //     $baseUrl = "http://localhost:5173";
+    //     $urlWithToken = "{$baseUrl}?token={$token}";
+
+    //     // Step 6: Return response
+    //     return response()->json([
+    //         'success' => true,
+    //         'base_url' => $baseUrl,
+    //         'token' => $token,
+    //         'url_with_token' => $urlWithToken
+    //     ]);
+    // }
+
     public function generateTokenAndUrl()
     {
-        // Step 1: Get latest visitor (optional)
-        $visitor = Visitor::latest()->first();
-
-        if (!$visitor) {
-            return response()->json([
-                'success' => false,
-                'message' => 'No visitors found'
-            ], 404);
-        }
-
         // Step 2: Generate new token
         $token = Str::random(32);
         $now = Carbon::now();
@@ -275,18 +446,11 @@ class VisitorController extends Controller
             'token' => $token
         ]);
 
-
-        // Step 4: Optionally update visitor table with same token
-        $visitor->update([
-            'token' => $token,
-            'token_created_at' => $now
-        ]);
-
         // Step 5: Create frontend URL with token
         $baseUrl = "https://vms.evolvu.in/public/react";
+        // $baseUrl = "http://localhost:5173";
         $urlWithToken = "{$baseUrl}?token={$token}";
 
-        // Step 6: Return response
         return response()->json([
             'success' => true,
             'base_url' => $baseUrl,
@@ -294,6 +458,7 @@ class VisitorController extends Controller
             'url_with_token' => $urlWithToken
         ]);
     }
+
 
     public function verifyToken(Request $request)
     {
@@ -319,17 +484,6 @@ class VisitorController extends Controller
                 'message' => 'Token is invalid or expired'
             ], 403);
         }
-
-        // $passedShortName = $request->query('short_name');
-
-        // if (!$passedShortName) {
-        //     return response()->json([
-        //         'status' => 400,
-        //         'success' => false,
-        //         'message' => 'Short Name not Found',
-
-        //     ]);
-        // }
     }
 
     public function invalidateToken(Request $request)
