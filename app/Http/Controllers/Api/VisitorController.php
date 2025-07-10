@@ -159,7 +159,7 @@ class VisitorController extends Controller
         // Step 2: Add additional fields
         $validated['academic_yr'] = $academic_yr;
         $validated['visit_date'] = now()->format('Y-m-d');
-        $validated['visit_in_time'] = now()->format('Y-m-d H:i:s');
+        $validated['visit_in_time'] = null;
         $validated['visit_out_time'] = null;
         $validated['short_name'] = $request->short_name;
 
