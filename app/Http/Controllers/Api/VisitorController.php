@@ -39,6 +39,8 @@ class VisitorController extends Controller
         $validated['visit_in_time'] = null;
         $validated['visit_out_time'] = null;
         $validated['short_name'] = $request->short_name;
+        $validated['user_id'] = $request->user_id;
+
 
         // Step 3: Check if token is already used
         if (Visitor::where('token', $validated['token'])->exists()) {
