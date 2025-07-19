@@ -27,6 +27,7 @@ class Visitor extends Model
         'whomtomeet',
         'token',
         'short_name',
+        'user_id',
         'token_created_at',
         'academic_yr',
         'visit_date',
