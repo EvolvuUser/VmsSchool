@@ -16,6 +16,7 @@ use Illuminate\Support\Carbon;
 class VisitorController extends Controller
 {
 
+
     public function store(Request $request)
     {
         $academicyeardata = DB::table('academic_yr')->where('active', 'Y')->first();
@@ -26,11 +27,12 @@ class VisitorController extends Controller
             'name' => 'required|string|max:255',
             'mobileno' => 'required|digits:10',
             'email' => 'required|string|max:50',
-            'address' => 'required|string|max:1000',
-            'purpose' => 'required|string|max:255',
+            'address' => 'required',
+            'purpose' => 'required',
             'whomtomeet' => 'required|string|max:255',
             'token' => 'required|string',
             'token_created_at' => 'required|date',
+
         ]);
 
         // Step 2: Add additional fields
@@ -40,7 +42,6 @@ class VisitorController extends Controller
         $validated['visit_out_time'] = null;
         $validated['short_name'] = $request->short_name;
         $validated['user_id'] = $request->user_id;
-
 
         // Step 3: Check if token is already used
         if (Visitor::where('token', $validated['token'])->exists()) {
@@ -68,16 +69,34 @@ class VisitorController extends Controller
             ], 400);
         }
 
-        // Step 5: Save visitor
+        // Step 5: Generate custom visit_id like SACS1, SACS2
+        $prefix = strtoupper($validated['short_name']); // e.g., 'SACS'
+
+        $latestVisitor = Visitor::where('short_name', $prefix)
+            ->whereNotNull('visit_id')
+            ->where('visit_id', 'LIKE', $prefix . '%')
+            ->orderByDesc('visitor_id')  // Use visitor_id, not id
+            ->first();
+
+
+
+        $nextNumber = 1;
+        if ($latestVisitor && preg_match('/\d+$/', $latestVisitor->visit_id, $matches)) {
+            $nextNumber = (int)$matches[0] + 1;
+        }
+
+        $validated['visit_id'] = $prefix . $nextNumber;
+
+        // Step 6: Save visitor
         $visitor = new Visitor($validated);
         $visitor->save();
 
-        // Step 6: Invalidate token
+        // Step 7: Invalidate token
         DB::table('token')
             ->where('token', $validated['token'])
             ->update(['token' => null]);
 
-        // Step 7: Return response
+        // Step 8: Return response
         return response()->json([
             'status' => 'success',
             'message' => 'Visitor data saved successfully. Token invalidated.',
@@ -85,10 +104,10 @@ class VisitorController extends Controller
         ], 201);
     }
 
+
     public function show($id)
     {
         $visitor = Visitor::find($id);
-
 
         if (!$visitor) {
             return response()->json([
@@ -140,6 +159,7 @@ class VisitorController extends Controller
                 'otp' => $otp
             ]
         );
+
         Mail::html("<h2>Your OTP is: $otp</h2>", function ($message) use ($email) {
             $message->to($email)
                 ->subject('Your OTP Code');
@@ -173,51 +193,36 @@ class VisitorController extends Controller
         ]);
     }
 
+
     public function checkVisitorStatus(Request $request)
     {
         $email = $request->email;
         $mobileno = $request->mobileno;
+        $shortName = $request->short_name;
 
-        $visitor = Visitor::where(function ($q) use ($email, $mobileno) {
-            $q->where('email', $email)->orWhere('mobileno', $mobileno);
+        // Check if a visitor with the same email/mobile and same school (short_name) is already inside (not checked out)
+        $existingVisitor = Visitor::where(function ($q) use ($email, $mobileno) {
+            $q->where('email', $email)
+                ->orWhere('mobileno', $mobileno);
         })
+            ->where('short_name', $shortName)
+            ->where(function ($q) {
+                $q->whereNull('visit_in_time')->orWhereNull('visit_out_time');
+            })
             ->latest()
             ->first();
 
-        if ($visitor) {
+        if ($existingVisitor) {
+            DB::table('token')
+                ->where('token', $existingVisitor->token)
+                ->update(['token' => null]);
 
-            if (!is_null($visitor->visit_in_time) && !is_null($visitor->visit_out_time)) {
-
-                return response()->json([
-                    'alreadyInside' => false
-                ]);
-            } else {
-                DB::table('token')
-                    ->where('token', $visitor->token)
-                    ->update(['token' => null]);
-                return response()->json(['alreadyInside' => true]);
-            }
+            return response()->json(['alreadyInside' => true]);
         }
-
-        // $visitor = Visitor::where(function ($q) use ($email, $mobileno) {
-        //     $q->where('email', $email)->orWhere('mobileno', $mobileno);
-        // })
-        //     ->whereNull('visit_out_time')
-        //     ->latest()
-        //     ->first();
-
-        // if ($visitor) {
-        //     // Invalidate the token in the token table
-        //     DB::table('token')
-        //         ->where('token', $visitor->token)
-        //         ->update(['token' => null]);
-
-        //     return response()->json(['alreadyInside' => true]);
-        // }
-
 
         return response()->json(['alreadyInside' => false]);
     }
+
 
     public function getAllVisitors(Request $request)
     {
@@ -226,18 +231,37 @@ class VisitorController extends Controller
         return response()->json(['data' => $visitors]);
     }
 
+    // public function getAllVisitor(Request $request)
+    // {
+    //     // Validate input
+    //     $request->validate([
+    //         'short_name' => 'required|string',
+    //     ]);
+
+    //     // Fetch visitors from database
+    //     $short_name = $request->input('short_name');
+
+    //     $visitors = DB::table('get_visitors')
+    //         ->where('short_name', $short_name)
+    //         ->get();
+
+    //     return response()->json([
+    //         'success' => true,
+    //         'data' => $visitors,
+    //     ]);
+    // }
+
     public function getAllVisitor(Request $request)
     {
-        // Validate input
         $request->validate([
             'short_name' => 'required|string',
         ]);
 
-        // Fetch visitors from database
         $short_name = $request->input('short_name');
 
         $visitors = DB::table('get_visitors')
             ->where('short_name', $short_name)
+            ->orderByDesc('visit_in_time')
             ->get();
 
         return response()->json([
@@ -246,17 +270,19 @@ class VisitorController extends Controller
         ]);
     }
 
+
     public function saveInTime(Request $request, $id)
     {
-        // dd($request->all());
         $validated = $request->validate([
             'visit_in_time' => 'required|date_format:Y-m-d H:i:s',
         ]);
         $validated['short_name'] = $request->short_name;
+        $validated['user_id'] = $request->user_id;
 
         $visitor = Visitor::find($id);
         $visitor->visit_in_time = $validated['visit_in_time'];
         $visitor->short_name = $validated['short_name'];
+        $visitor->user_id = $validated['user_id'];
         $visitor->save();
 
         return response()->json([
@@ -274,10 +300,12 @@ class VisitorController extends Controller
             'visit_out_time' => 'required|date_format:Y-m-d H:i:s'
         ]);
         $validated['short_name'] = $request->short_name;
+        $validated['user_id'] = $request->user_id;
 
         $visitor = Visitor::find($id);
         $visitor->visit_out_time = $validated['visit_out_time'];
         $visitor->short_name = $validated['short_name'];
+        $visitor->user_id = $validated['user_id'];
         $visitor->save();
 
         return response()->json([

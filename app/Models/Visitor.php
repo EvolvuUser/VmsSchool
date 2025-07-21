@@ -19,6 +19,7 @@ class Visitor extends Model
     protected $keyType = 'int';
 
     protected $fillable = [
+        'visit_id',
         'name',
         'mobileno',
         'email',
@@ -33,5 +34,6 @@ class Visitor extends Model
         'visit_date',
         'visit_in_time',
         'visit_out_time',
+
     ];
 }
