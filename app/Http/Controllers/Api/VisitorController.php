@@ -333,6 +333,7 @@ class VisitorController extends Controller
         // Step 5: Create frontend URL with token
         $baseUrl = "https://vms.evolvu.in/public/react";
         // $baseUrl = "http://localhost:5173";
+
         $urlWithToken = "{$baseUrl}?token={$token}";
 
         return response()->json([
