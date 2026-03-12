@@ -325,50 +325,25 @@ class VisitorController extends Controller
     }
 
     // genereate a QR code api with Url and token
-    // public function generateTokenAndUrl()
-    // {
-    //     // Step 2: Generate new token
-    //     $token = Str::random(32);
-    //     $now = Carbon::now();
-
-    //     // Step 3: Truncate (clear) token table and insert new token
-    //     DB::table('token')->truncate();
-
-    //     DB::table('token')->insert([
-    //         'token' => $token
-    //     ]);
-
-    //     // Step 5: Create frontend URL with token
-    //     $baseUrl = "https://vms.evolvu.in/public/react";
-    //     // $baseUrl = "http://localhost:5173";
-
-    //     // $baseUrl = "https://vmstest.evolvu.in/public/react";   //test
-
-    //     $urlWithToken = "{$baseUrl}?token={$token}";
-
-    //     return response()->json([
-    //         'success' => true,
-    //         'base_url' => $baseUrl,
-    //         'token' => $token,
-    //         'url_with_token' => $urlWithToken
-    //     ]);
-    // }
     public function generateTokenAndUrl()
     {
-        // Generate new token
+        // Step 2: Generate new token
         $token = Str::random(32);
+        $now = Carbon::now();
 
-        // Clear token table and insert new token
+        // Step 3: Truncate (clear) token table and insert new token
         DB::table('token')->truncate();
 
         DB::table('token')->insert([
             'token' => $token
         ]);
 
-        // Get base URL from .env
-        $baseUrl = env('BASE_URL');
+        // Step 5: Create frontend URL with token
+        // $baseUrl = "https://vms.evolvu.in/public/react";  //live
+        // $baseUrl = "http://localhost:5173";   //local
 
-        // Create frontend URL with token
+        $baseUrl = "https://vmstest.evolvu.in/public/react";   //test
+
         $urlWithToken = "{$baseUrl}?token={$token}";
 
         return response()->json([
@@ -378,6 +353,31 @@ class VisitorController extends Controller
             'url_with_token' => $urlWithToken
         ]);
     }
+    // public function generateTokenAndUrl()
+    // {
+    //     // Generate new token
+    //     $token = Str::random(32);
+
+    //     // Clear token table and insert new token
+    //     DB::table('token')->truncate();
+
+    //     DB::table('token')->insert([
+    //         'token' => $token
+    //     ]);
+
+    //     // Get base URL from .env
+    //     $baseUrl = env('BASE_URL');
+
+    //     // Create frontend URL with token
+    //     $urlWithToken = "{$baseUrl}?token={$token}";
+
+    //     return response()->json([
+    //         'success' => true,
+    //         'base_url' => $baseUrl,
+    //         'token' => $token,
+    //         'url_with_token' => $urlWithToken
+    //     ]);
+    // }
 
     public function verifyToken(Request $request)
     {
