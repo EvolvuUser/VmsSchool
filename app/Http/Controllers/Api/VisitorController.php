@@ -13,6 +13,7 @@ use Illuminate\Support\Carbon;
 
 
 
+
 class VisitorController extends Controller
 {
 
@@ -150,7 +151,7 @@ class VisitorController extends Controller
         $otp = rand(1000, 9999);
         $email = $request->email;
         DB::table('users')->updateOrInsert(
-            ['email' => $email], // Condition to check (like WHERE email = ?)
+            ['email' => $email],
             [
                 'name' => $request->name,
                 'mobileno' => $request->mobileno,
@@ -160,10 +161,17 @@ class VisitorController extends Controller
             ]
         );
 
-        Mail::html("<h2>Your OTP is: $otp</h2>", function ($message) use ($email) {
-            $message->to($email)
-                ->subject('Your OTP Code');
-        });
+        // Mail::html("<h2>Your OTP is: $otp</h2>", function ($message) use ($email) {
+        //     $message->to($email)
+        //         ->subject('Your OTP Code');
+        // });
+
+        smart_mail(
+            $email,
+            'Your OTP Code',
+            'emails.otp_mail',
+            ['otp' => $otp]
+        );
 
         return response()->json([
             'status' => '200',
