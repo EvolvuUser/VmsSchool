@@ -325,23 +325,50 @@ class VisitorController extends Controller
     }
 
     // genereate a QR code api with Url and token
+    // public function generateTokenAndUrl()
+    // {
+    //     // Step 2: Generate new token
+    //     $token = Str::random(32);
+    //     $now = Carbon::now();
+
+    //     // Step 3: Truncate (clear) token table and insert new token
+    //     DB::table('token')->truncate();
+
+    //     DB::table('token')->insert([
+    //         'token' => $token
+    //     ]);
+
+    //     // Step 5: Create frontend URL with token
+    //     $baseUrl = "https://vms.evolvu.in/public/react";
+    //     // $baseUrl = "http://localhost:5173";
+
+    //     // $baseUrl = "https://vmstest.evolvu.in/public/react";   //test
+
+    //     $urlWithToken = "{$baseUrl}?token={$token}";
+
+    //     return response()->json([
+    //         'success' => true,
+    //         'base_url' => $baseUrl,
+    //         'token' => $token,
+    //         'url_with_token' => $urlWithToken
+    //     ]);
+    // }
     public function generateTokenAndUrl()
     {
-        // Step 2: Generate new token
+        // Generate new token
         $token = Str::random(32);
-        $now = Carbon::now();
 
-        // Step 3: Truncate (clear) token table and insert new token
+        // Clear token table and insert new token
         DB::table('token')->truncate();
 
         DB::table('token')->insert([
             'token' => $token
         ]);
 
-        // Step 5: Create frontend URL with token
-        $baseUrl = "https://vms.evolvu.in/public/react";
-        // $baseUrl = "http://localhost:5173";
+        // Get base URL from .env
+        $baseUrl = env('BASE_URL');
 
+        // Create frontend URL with token
         $urlWithToken = "{$baseUrl}?token={$token}";
 
         return response()->json([
