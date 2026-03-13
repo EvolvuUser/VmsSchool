@@ -13,6 +13,7 @@ use Illuminate\Support\Carbon;
 
 
 
+
 class VisitorController extends Controller
 {
 
@@ -52,9 +53,28 @@ class VisitorController extends Controller
         }
 
         // Step 4: Validate token expiration (UTC to match frontend)
+        // try {
+        //     $createdAt = Carbon::parse($validated['token_created_at'])->timezone('UTC');
+        //     $now = now('UTC');
+        //     // $createdAt = Carbon::parse($validated['token_created_at'])->timezone('Asia/Kolkata');
+        //     // $now = now('Asia/Kolkata');
+
+        //     if ($now->diffInSeconds($createdAt) > 600) {
+        //         return response()->json([
+        //             'status' => 'error',
+        //             'message' => 'Token expired. Please scan the QR code again.',
+        //         ], 403);
+        //     }
+        // } catch (\Exception $e) {
+        //     return response()->json([
+        //         'status' => 'error',
+        //         'message' => 'Invalid token timestamp.',
+        //     ], 400);
+        // }
+
         try {
-            $createdAt = Carbon::parse($validated['token_created_at'])->timezone('UTC');
-            $now = now('UTC');
+            $createdAt = Carbon::parse($validated['token_created_at'], 'Asia/Kolkata');
+            $now = Carbon::now('Asia/Kolkata');
 
             if ($now->diffInSeconds($createdAt) > 600) {
                 return response()->json([
@@ -150,7 +170,7 @@ class VisitorController extends Controller
         $otp = rand(1000, 9999);
         $email = $request->email;
         DB::table('users')->updateOrInsert(
-            ['email' => $email], // Condition to check (like WHERE email = ?)
+            ['email' => $email],
             [
                 'name' => $request->name,
                 'mobileno' => $request->mobileno,
@@ -160,10 +180,17 @@ class VisitorController extends Controller
             ]
         );
 
-        Mail::html("<h2>Your OTP is: $otp</h2>", function ($message) use ($email) {
-            $message->to($email)
-                ->subject('Your OTP Code');
-        });
+        // Mail::html("<h2>Your OTP is: $otp</h2>", function ($message) use ($email) {
+        //     $message->to($email)
+        //         ->subject('Your OTP Code');
+        // });
+
+        smart_mail(
+            $email,
+            'Your OTP Code',
+            'emails.otp_mail',
+            ['otp' => $otp]
+        );
 
         return response()->json([
             'status' => '200',
@@ -171,6 +198,65 @@ class VisitorController extends Controller
             'success' => true
         ]);
     }
+
+    // public function getEmailOtp(Request $request)
+    // {
+    //     try {
+
+    //         // 1. Validate Request
+    //         $request->validate([
+    //             'name'     => 'required|string|max:100',
+    //             'email'    => 'required|email',
+    //             'mobileno' => 'required|digits_between:10,15',
+    //             'address'  => 'nullable|string|max:255',
+    //             'purpose'  => 'nullable|string|max:255',
+    //         ]);
+
+    //         // 2. Generate OTP
+    //         $otp = random_int(1000, 9999);
+    //         $email = $request->email;
+
+    //         // 3. Save OTP with expiry (5 minutes)
+    //         DB::table('users')->updateOrInsert(
+    //             ['email' => $email],
+    //             [
+    //                 'name'       => $request->name,
+    //                 'mobileno'   => $request->mobileno,
+    //                 'address'    => $request->address,
+    //                 'purpose'    => $request->purpose,
+    //                 'otp'        => $otp,
+    //                 'otp_expiry' => now()->addMinutes(5),
+    //                 'updated_at' => now(),
+    //                 'created_at' => now()
+    //             ]
+    //         );
+
+    //         // 4. Send Email
+    //         smart_mail(
+    //             $email,
+    //             'Your OTP Code',
+    //             'emails.otp_mail',
+    //             ['otp' => $otp]
+    //         );
+
+    //         // 5. Success Response
+    //         return response()->json([
+    //             'status'  => true,
+    //             'message' => 'OTP sent successfully.',
+    //             'code'    => 200
+    //         ], 200);
+    //     } catch (\Exception $e) {
+
+    //         // 6. Log Error
+    //         \Log::error('OTP Email Error: ' . $e->getMessage());
+
+    //         return response()->json([
+    //             'status'  => false,
+    //             'message' => 'Something went wrong while sending OTP.',
+    //             'code'    => 500
+    //         ], 500);
+    //     }
+    // }
 
     public function Verifyemailotp(Request $request)
     {
@@ -224,12 +310,12 @@ class VisitorController extends Controller
     }
 
 
-    public function getAllVisitors(Request $request)
-    {
-        $short_name = $request->input('short_name');
-        $visitors = DB::table('get_visitors')->where('short_name', $short_name)->get();
-        return response()->json(['data' => $visitors]);
-    }
+    // public function getAllVisitors(Request $request)
+    // {
+    //     $short_name = $request->input('short_name');
+    //     $visitors = DB::table('get_visitors')->where('short_name', $short_name)->get();
+    //     return response()->json(['data' => $visitors]);
+    // }
 
     // public function getAllVisitor(Request $request)
     // {
@@ -251,6 +337,25 @@ class VisitorController extends Controller
     //     ]);
     // }
 
+    public function getAllVisitors(Request $request)
+    {
+        $short_name = $request->input('short_name');
+        $visit_date = $request->input('visit_date');
+
+        $query = DB::table('get_visitors')
+            ->where('short_name', $short_name);
+
+        if (!empty($visit_date)) {
+            $query->whereDate('visit_date', $visit_date);
+        }
+
+        $visitors = $query->get();
+
+        return response()->json([
+            'data' => $visitors
+        ]);
+    }
+
     public function getAllVisitor(Request $request)
     {
         $request->validate([
@@ -267,6 +372,25 @@ class VisitorController extends Controller
         return response()->json([
             'success' => true,
             'data' => $visitors,
+        ]);
+    }
+
+    public function getTodayVisitorsCount(Request $request)
+    {
+        $request->validate([
+            'short_name' => 'required'
+        ]);
+
+        $short_name = strtoupper($request->short_name);
+
+        $count = DB::table('get_visitors')
+            ->where('short_name', $short_name)
+            ->whereDate('visit_date', today())
+            ->count();
+
+        return response()->json([
+            'short_name' => $short_name,
+            'today_visitors_count' => $count
         ]);
     }
 
@@ -317,22 +441,50 @@ class VisitorController extends Controller
     }
 
     // genereate a QR code api with Url and token
+    // public function generateTokenAndUrl()
+    // {
+    //     // Step 2: Generate new token
+    //     $token = Str::random(32);
+    //     $now = Carbon::now();
+
+    //     // Step 3: Truncate (clear) token table and insert new token
+    //     DB::table('token')->truncate();
+
+    //     DB::table('token')->insert([
+    //         'token' => $token
+    //     ]);
+
+    //     // Step 5: Create frontend URL with token
+    //     // $baseUrl = "https://vms.evolvu.in/public/react";  //live
+    //     // $baseUrl = "http://localhost:5173";   //local
+
+    //     $baseUrl = "https://vmstest.evolvu.in/public/react";   //test
+
+    //     $urlWithToken = "{$baseUrl}?token={$token}";
+
+    //     return response()->json([
+    //         'success' => true,
+    //         'base_url' => $baseUrl,
+    //         'token' => $token,
+    //         'url_with_token' => $urlWithToken
+    //     ]);
+    // }
     public function generateTokenAndUrl()
     {
-        // Step 2: Generate new token
+        // Generate new token
         $token = Str::random(32);
-        $now = Carbon::now();
 
-        // Step 3: Truncate (clear) token table and insert new token
+        // Clear token table and insert new token
         DB::table('token')->truncate();
 
         DB::table('token')->insert([
             'token' => $token
         ]);
 
-        // Step 5: Create frontend URL with token
-        $baseUrl = "https://vms.evolvu.in/public/react";
-        // $baseUrl = "http://localhost:5173";
+        // Get base URL from .env
+        $baseUrl = env('BASE_URL');
+
+        // Create frontend URL with token
         $urlWithToken = "{$baseUrl}?token={$token}";
 
         return response()->json([
