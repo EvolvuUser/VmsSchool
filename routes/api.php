@@ -21,10 +21,11 @@ Route::get('/role_get', [VisitorController::class, 'role']);
 Route::post('/get_emailotp', [VisitorController::class, 'getEmailOtp']);
 Route::post('/verifyemailotp', [VisitorController::class, 'Verifyemailotp']);
 Route::get('/check_visitor_status', [VisitorController::class, 'checkVisitorStatus']);
-Route::get('/get_all_visitors', [VisitorController::class, 'getAllVisitors']);
+Route::post('/get_all_visitors', [VisitorController::class, 'getAllVisitors']);
 Route::post('/get_all_visitor', [VisitorController::class, 'getAllVisitor']);
 Route::post('/save_intime/{id}', [VisitorController::class, 'saveInTime']);
 Route::post('/save_outtime/{id}', [VisitorController::class, 'saveOutTime']);
+Route::post('/get_visitor_count_today', [VisitorController::class, 'getTodayVisitorsCount']);
 
 Route::post('/generate_token_url', [VisitorController::class, 'generateTokenAndUrl']);
 Route::get('/verify_token', [VisitorController::class, 'verifyToken']);
