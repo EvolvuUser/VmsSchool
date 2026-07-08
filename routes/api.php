@@ -1,9 +1,8 @@
 <?php
 
+use App\Http\Controllers\Api\FormController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
-
-use App\Http\Controllers\Api\FormController;
 
 Route::post('/submit-form', [FormController::class, 'submit']);
 
@@ -12,7 +11,6 @@ Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
 });
 
 use App\Http\Controllers\Api\VisitorController;
-
 
 Route::post('/visitors', [VisitorController::class, 'store']);
 Route::get('/visitors/{id}', [VisitorController::class, 'show']);
@@ -30,3 +28,5 @@ Route::post('/get_visitor_count_today', [VisitorController::class, 'getTodayVisi
 Route::post('/generate_token_url', [VisitorController::class, 'generateTokenAndUrl']);
 Route::get('/verify_token', [VisitorController::class, 'verifyToken']);
 Route::post('/invalidate_token', [VisitorController::class, 'invalidateToken']);
+
+Route::post('/visitor_report', [VisitorController::class, 'visitorReport']);

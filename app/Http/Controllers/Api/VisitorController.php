@@ -3,21 +3,16 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use Illuminate\Http\Request;
 use App\Models\Visitor;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Http;
-use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Carbon;
-
-
-
+use Illuminate\Support\Str;
 
 class VisitorController extends Controller
 {
-
-
     public function store(Request $request)
     {
         $academicyeardata = DB::table('academic_yr')->where('active', 'Y')->first();
@@ -33,7 +28,6 @@ class VisitorController extends Controller
             'whomtomeet' => 'required|string|max:255',
             'token' => 'required|string',
             'token_created_at' => 'required|date',
-
         ]);
 
         // Step 2: Add additional fields
@@ -90,7 +84,7 @@ class VisitorController extends Controller
         }
 
         // Step 5: Generate custom visit_id like SACS1, SACS2
-        $prefix = strtoupper($validated['short_name']); // e.g., 'SACS'
+        $prefix = strtoupper($validated['short_name']);  // e.g., 'SACS'
 
         $latestVisitor = Visitor::where('short_name', $prefix)
             ->whereNotNull('visit_id')
@@ -98,11 +92,9 @@ class VisitorController extends Controller
             ->orderByDesc('visitor_id')  // Use visitor_id, not id
             ->first();
 
-
-
         $nextNumber = 1;
         if ($latestVisitor && preg_match('/\d+$/', $latestVisitor->visit_id, $matches)) {
-            $nextNumber = (int)$matches[0] + 1;
+            $nextNumber = (int) $matches[0] + 1;
         }
 
         $validated['visit_id'] = $prefix . $nextNumber;
@@ -123,7 +115,6 @@ class VisitorController extends Controller
             'data' => $visitor
         ], 201);
     }
-
 
     public function show($id)
     {
@@ -279,7 +270,6 @@ class VisitorController extends Controller
         ]);
     }
 
-
     public function checkVisitorStatus(Request $request)
     {
         $email = $request->email;
@@ -288,7 +278,8 @@ class VisitorController extends Controller
 
         // Check if a visitor with the same email/mobile and same school (short_name) is already inside (not checked out)
         $existingVisitor = Visitor::where(function ($q) use ($email, $mobileno) {
-            $q->where('email', $email)
+            $q
+                ->where('email', $email)
                 ->orWhere('mobileno', $mobileno);
         })
             ->where('short_name', $shortName)
@@ -308,7 +299,6 @@ class VisitorController extends Controller
 
         return response()->json(['alreadyInside' => false]);
     }
-
 
     // public function getAllVisitors(Request $request)
     // {
@@ -394,7 +384,6 @@ class VisitorController extends Controller
         ]);
     }
 
-
     public function saveInTime(Request $request, $id)
     {
         $validated = $request->validate([
@@ -419,7 +408,6 @@ class VisitorController extends Controller
 
     public function saveOutTime(Request $request, $id)
     {
-
         $validated = $request->validate([
             'visit_out_time' => 'required|date_format:Y-m-d H:i:s'
         ]);
@@ -528,5 +516,46 @@ class VisitorController extends Controller
         DB::table('token')->where('token_id', '1')->update(['token' => null]);
 
         return response()->json(['success' => true, 'message' => 'Token invalidated.']);
+    }
+
+    public function visitorReport(Request $request)
+    {
+        $request->validate([
+            'short_name' => 'required|string',
+            'academic_yr' => 'nullable|string',
+            'from_date' => 'nullable|date',
+            'to_date' => 'nullable|date|after_or_equal:from_date',
+        ]);
+
+        $query = DB::table('get_visitors')
+            ->where('short_name', $request->short_name);
+
+        // Filter by Academic Year
+        if ($request->filled('academic_yr')) {
+            $query->where('academic_yr', $request->academic_yr);
+        }
+
+        // Filter by Date Range
+        if ($request->filled('from_date') && $request->filled('to_date')) {
+            $query->whereBetween('visit_date', [
+                $request->from_date,
+                $request->to_date
+            ]);
+        } elseif ($request->filled('from_date')) {
+            $query->whereDate('visit_date', '>=', $request->from_date);
+        } elseif ($request->filled('to_date')) {
+            $query->whereDate('visit_date', '<=', $request->to_date);
+        }
+
+        $visitors = $query
+            ->orderBy('visit_date', 'desc')
+            ->orderBy('visit_in_time', 'desc')
+            ->get();
+
+        return response()->json([
+            'success' => true,
+            'count' => $visitors->count(),
+            'data' => $visitors,
+        ]);
     }
 }
